@@ -4,15 +4,23 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chain.h>
+#include <tinyformat.h>
+#include <util/time.h>
 
-/**
- * CChain implementation
- */
-void CChain::SetTip(CBlockIndex *pindex) {
-    if (pindex == nullptr) {
-        vChain.clear();
-        return;
-    }
+std::string CBlockFileInfo::ToString() const
+{
+    return strprintf("CBlockFileInfo(blocks=%u, size=%u, heights=%u...%u, time=%s...%s)", nBlocks, nSize, nHeightFirst, nHeightLast, FormatISO8601Date(nTimeFirst), FormatISO8601Date(nTimeLast));
+}
+
+std::string CBlockIndex::ToString() const
+{
+    return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
+                     pprev, nHeight, hashMerkleRoot.ToString(), GetBlockHash().ToString());
+}
+
+void CChain::SetTip(CBlockIndex& block)
+{
+    CBlockIndex* pindex = &block;
     vChain.resize(pindex->nHeight + 1);
     while (pindex && vChain[pindex->nHeight] != pindex) {
         vChain[pindex->nHeight] = pindex;
@@ -148,7 +156,7 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
     if (r.bits() > 63) {
         return sign * std::numeric_limits<int64_t>::max();
     }
-    return sign * r.GetLow64();
+    return sign * int64_t(r.GetLow64());
 }
 
 /** Find the last common ancestor two blocks have.
