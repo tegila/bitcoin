@@ -11,7 +11,7 @@ RUN apk --no-cache add boost-dev libevent-dev
 
 RUN cd /bitcoin/depends; make NO_QT=1
 
-RUN wget https://zlib.net/zlib-1.2.11.tar.gz
+RUN wget https://zlib.net/zlib-1.2.12.tar.gz
 RUN mkdir -p /usr/src/zlib; tar zxvf zlib-1.2.11.tar.gz -C /usr/src
 RUN cd /usr/src/zlib-1.2.11; ./configure; make; make install
 
