@@ -30,7 +30,7 @@ static void GroupCoins(FuzzedDataProvider& fuzzed_data_provider, const std::vect
     bool valid_outputgroup{false};
     for (auto& coin : coins) {
         output_group.Insert(coin, /*ancestors=*/0, /*descendants=*/0, positive_only);
-        // If positive_only was specified, nothing may have been inserted, leading to an empty outpout group
+        // If positive_only was specified, nothing may have been inserted, leading to an empty output group
         // that would be invalid for the BnB algorithm
         valid_outputgroup = !positive_only || output_group.GetSelectionAmount() > 0;
         if (valid_outputgroup && fuzzed_data_provider.ConsumeBool()) {
@@ -58,6 +58,8 @@ FUZZ_TARGET(coinselection)
     coin_params.m_subtract_fee_outputs = subtract_fee_outputs;
     coin_params.m_long_term_feerate = long_term_fee_rate;
     coin_params.m_effective_feerate = effective_fee_rate;
+    coin_params.change_output_size = fuzzed_data_provider.ConsumeIntegralInRange<int>(10, 1000);
+    coin_params.m_change_fee = effective_fee_rate.GetFee(coin_params.change_output_size);
 
     // Create some coins
     CAmount total_balance{0};
@@ -83,11 +85,11 @@ FUZZ_TARGET(coinselection)
     const auto result_bnb = SelectCoinsBnB(group_pos, target, cost_of_change);
 
     auto result_srd = SelectCoinsSRD(group_pos, target, fast_random_context);
-    if (result_srd) result_srd->ComputeAndSetWaste(cost_of_change);
+    if (result_srd) result_srd->ComputeAndSetWaste(cost_of_change, cost_of_change, 0);
 
-    CAmount change_target{GenerateChangeTarget(target, fast_random_context)};
+    CAmount change_target{GenerateChangeTarget(target, coin_params.m_change_fee, fast_random_context)};
     auto result_knapsack = KnapsackSolver(group_all, target, change_target, fast_random_context);
-    if (result_knapsack) result_knapsack->ComputeAndSetWaste(cost_of_change);
+    if (result_knapsack) result_knapsack->ComputeAndSetWaste(cost_of_change, cost_of_change, 0);
 
     // If the total balance is sufficient for the target and we are not using
     // effective values, Knapsack should always find a solution.

@@ -3,10 +3,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <chainparams.h>
+#include <common/run_command.h>
 #include <core_io.h>
 #include <psbt.h>
 #include <util/strencodings.h>
-#include <util/system.h>
 #include <external_signer.h>
 
 #include <algorithm>
@@ -28,7 +28,7 @@ bool ExternalSigner::Enumerate(const std::string& command, std::vector<ExternalS
     if (!result.isArray()) {
         throw std::runtime_error(strprintf("'%s' received invalid response, expected array of signers", command));
     }
-    for (UniValue signer : result.getValues()) {
+    for (const UniValue& signer : result.getValues()) {
         // Check for error
         const UniValue& error = find_value(signer, "error");
         if (!error.isNull()) {

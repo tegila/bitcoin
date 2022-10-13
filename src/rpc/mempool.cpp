@@ -168,7 +168,7 @@ static RPCHelpMan testmempoolaccept()
             NodeContext& node = EnsureAnyNodeContext(request.context);
             CTxMemPool& mempool = EnsureMemPool(node);
             ChainstateManager& chainman = EnsureChainman(node);
-            CChainState& chainstate = chainman.ActiveChainstate();
+            Chainstate& chainstate = chainman.ActiveChainstate();
             const PackageMempoolAcceptResult package_result = [&] {
                 LOCK(::cs_main);
                 if (txns.size() > 1) return ProcessNewPackage(chainstate, mempool, txns, /*test_accept=*/true);
@@ -255,7 +255,7 @@ static std::vector<RPCResult> MempoolEntryDescription()
             {RPCResult{RPCResult::Type::STR_HEX, "transactionid", "parent transaction id"}}},
         RPCResult{RPCResult::Type::ARR, "spentby", "unconfirmed transactions spending outputs from this transaction",
             {RPCResult{RPCResult::Type::STR_HEX, "transactionid", "child transaction id"}}},
-        RPCResult{RPCResult::Type::BOOL, "bip125-replaceable", "Whether this transaction could be replaced due to BIP125 (replace-by-fee)"},
+        RPCResult{RPCResult::Type::BOOL, "bip125-replaceable", "Whether this transaction signals BIP125 replaceability or has an unconfirmed ancestor signaling BIP125 replaceability.\n"},
         RPCResult{RPCResult::Type::BOOL, "unbroadcast", "Whether this transaction is currently unbroadcast (initial broadcast not yet acknowledged by any peers)"},
     };
 }
@@ -449,9 +449,8 @@ static RPCHelpMan getmempoolancestors()
     }
 
     CTxMemPool::setEntries setAncestors;
-    uint64_t noLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
-    mempool.CalculateMemPoolAncestors(*it, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
+    mempool.CalculateMemPoolAncestors(*it, setAncestors, CTxMemPool::Limits::NoLimits(), dummy, false);
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
@@ -605,8 +604,7 @@ static RPCHelpMan gettxspendingprevout()
         },
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
-            RPCTypeCheckArgument(request.params[0], UniValue::VARR);
-            const UniValue& output_params = request.params[0];
+            const UniValue& output_params = request.params[0].get_array();
             if (output_params.empty()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, outputs are missing");
             }
@@ -690,7 +688,7 @@ static RPCHelpMan getmempoolinfo()
                 {RPCResult::Type::NUM, "maxmempool", "Maximum memory usage for the mempool"},
                 {RPCResult::Type::STR_AMOUNT, "mempoolminfee", "Minimum fee rate in " + CURRENCY_UNIT + "/kvB for tx to be accepted. Is the maximum of minrelaytxfee and minimum mempool fee"},
                 {RPCResult::Type::STR_AMOUNT, "minrelaytxfee", "Current minimum relay fee for transactions"},
-                {RPCResult::Type::NUM, "incrementalrelayfee", "minimum fee rate increment for mempool limiting or BIP 125 replacement in " + CURRENCY_UNIT + "/kvB"},
+                {RPCResult::Type::NUM, "incrementalrelayfee", "minimum fee rate increment for mempool limiting or replacement in " + CURRENCY_UNIT + "/kvB"},
                 {RPCResult::Type::NUM, "unbroadcastcount", "Current number of transactions that haven't passed initial broadcast yet"},
                 {RPCResult::Type::BOOL, "fullrbf", "True if the mempool accepts RBF without replaceability signaling inspection"},
             }},
@@ -810,7 +808,7 @@ static RPCHelpMan submitpackage()
 
             NodeContext& node = EnsureAnyNodeContext(request.context);
             CTxMemPool& mempool = EnsureMemPool(node);
-            CChainState& chainstate = EnsureChainman(node).ActiveChainstate();
+            Chainstate& chainstate = EnsureChainman(node).ActiveChainstate();
             const auto package_result = WITH_LOCK(::cs_main, return ProcessNewPackage(chainstate, mempool, txns, /*test_accept=*/ false));
 
             // First catch any errors.

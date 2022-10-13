@@ -23,6 +23,8 @@ class ListSinceBlockTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
         self.setup_clean_chain = True
+        # whitelist peers to speed up tx relay / mempool sync
+        self.extra_args = [["-whitelist=noban@127.0.0.1"]] * self.num_nodes
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_wallet()
@@ -40,7 +42,8 @@ class ListSinceBlockTest(BitcoinTestFramework):
         self.test_double_send()
         self.double_spends_filtered()
         self.test_targetconfirmations()
-        self.test_desc()
+        if self.options.descriptors:
+            self.test_desc()
         self.test_send_to_self()
 
     def test_no_blockhash(self):
